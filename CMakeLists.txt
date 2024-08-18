@@ -19,4 +19,4 @@ target_include_directories(RingByteBuffer INTERFACE include/)
 target_compile_options(RingByteBuffer INTERFACE ${rbb_compile_options})
 
 add_subdirectory(tests/)
-add_test(NAME test_rbb_validate COMMAND rbb_validate)
+add_test(NAME test_rbb_validate_automatic COMMAND rbb_validate_automatic)
