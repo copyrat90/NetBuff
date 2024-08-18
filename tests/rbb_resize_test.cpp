@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <source_location>
+#include <utility>
 
 #define TEST_ASSERT(condition) \
     do \
@@ -65,6 +66,16 @@ int main()
     TEST_ASSERT(ring.try_read(temp_5.data() + 3, 2));
     TEST_ASSERT(temp_5 == HELLO);
     TEST_ASSERT(ring.empty());
+
+    TEST_ASSERT(ring.try_write(HELLO.data(), sizeof(HELLO)));
+    rbb::RingByteBuffer new_ring(std::move(ring));
+    TEST_ASSERT(ring.empty());
+    TEST_ASSERT(ring.effective_capacity() == 0);
+    TEST_ASSERT(new_ring.used_space() == 5);
+    TEST_ASSERT(new_ring.effective_capacity() == 5);
+    TEST_ASSERT(new_ring.try_read(temp_5.data(), sizeof(temp_5)));
+    TEST_ASSERT(temp_5 == HELLO);
+    TEST_ASSERT(new_ring.empty());
 
     std::cout << "All is well!" << std::endl;
 }

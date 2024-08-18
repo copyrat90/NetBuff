@@ -134,6 +134,7 @@ public:
     }
 
     /// @brief Try resizing the buffer.
+    ///
     /// If requested capacity is not enough to store the existing data in it, this function fails.
     /// If requested capacity is same as before, this function fails.
     ///
