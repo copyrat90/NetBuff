@@ -20,19 +20,55 @@ class RingByteBuffer : private ByteAllocator
     static_assert(std::is_same_v<std::byte, typename ByteAllocator::value_type>);
 
 public:
-    RingByteBuffer(std::size_t effective_capacity)
-        : _buffer(this->allocate(effective_capacity + 1)), _capacity(effective_capacity + 1)
+    RingByteBuffer() : RingByteBuffer(0)
     {
     }
+
+    RingByteBuffer(std::size_t effective_capacity)
+        : _buffer(effective_capacity == 0 ? nullptr : this->allocate(effective_capacity + 1)),
+          _capacity(effective_capacity + 1), _pos_read(0), _pos_write(0)
+    {
+    }
+
+    RingByteBuffer(RingByteBuffer&& other) noexcept
+        : ByteAllocator(std::move(other)), _buffer(other._buffer), _capacity(other._capacity),
+          _pos_read(other._pos_read), _pos_write(other._pos_write)
+    {
+        other._buffer = nullptr;
+        other._capacity = 1;
+        other._pos_read = 0;
+        other._pos_write = 0;
+    }
+
+    RingByteBuffer& operator=(RingByteBuffer&& other) noexcept
+    {
+        ByteAllocator::operator=(std::move(other));
+
+        _buffer = other._buffer;
+        _capacity = other._capacity;
+        _pos_read = other._pos_read;
+        _pos_write = other._pos_write;
+
+        other._buffer = nullptr;
+        other._capacity = 1;
+        other._pos_read = 0;
+        other._pos_write = 0;
+
+        return *this;
+    }
+
+    RingByteBuffer(const RingByteBuffer&) = delete;
+    RingByteBuffer& operator=(const RingByteBuffer&) = delete;
 
 public:
     ~RingByteBuffer()
     {
-        this->deallocate(_buffer, _capacity);
+        if (_buffer)
+            this->deallocate(_buffer, _capacity);
     }
 
 public:
-    bool try_write(void* data, std::size_t length)
+    bool try_write(const void* data, std::size_t length)
     {
         if (length > available_space())
             return false;
@@ -50,7 +86,7 @@ public:
             const std::size_t len_2 = length - consecutive_len;
 
             std::memcpy(_buffer + _pos_write, data, len_1);
-            std::memcpy(_buffer, static_cast<std::byte*>(data) + len_1, len_2);
+            std::memcpy(_buffer, static_cast<const std::byte*>(data) + len_1, len_2);
         }
 
         move_write_pos(length);
@@ -98,43 +134,45 @@ public:
     }
 
     /// @brief Try resizing the buffer.
-    /// If `new_effective_capacity` is smaller than `used_space()`, this function fails.
-    /// If `new_effective_capacity` is same as `used_space()`, this function succeeds without actually resizing.
+    /// If requested capacity is not enough to store the existing data in it, this function fails.
+    /// If requested capacity is same as before, this function fails.
     ///
-    /// @return Whether the resize was successful or not
+    /// @return Whether the resize took place or not
     bool try_resize(std::size_t new_effective_capacity)
     {
         const std::size_t used = used_space();
 
-        if (new_effective_capacity < used)
+        if (new_effective_capacity < used || new_effective_capacity == _capacity - 1)
             return false;
-        else if (new_effective_capacity == used)
-            return true;
 
-        std::byte* new_buffer = this->allocate(new_effective_capacity + 1);
+        std::byte* new_buffer = (new_effective_capacity == 0) ? nullptr : this->allocate(new_effective_capacity + 1);
 
-        const std::size_t consecutive_len = consecutive_read_length();
-        // 1-phase copy
-        if (used == consecutive_len)
+        if (new_buffer)
         {
-            std::memcpy(new_buffer, _buffer + _pos_read, used);
-        }
-        // 2-phase copy
-        else
-        {
-            assert(used > consecutive_len);
+            const std::size_t consecutive_len = consecutive_read_length();
+            // 1-phase copy
+            if (used == consecutive_len)
+            {
+                std::memcpy(new_buffer, _buffer + _pos_read, used);
+            }
+            // 2-phase copy
+            else
+            {
+                assert(used > consecutive_len);
 
-            const std::size_t len_1 = consecutive_len;
-            const std::size_t len_2 = used - consecutive_len;
+                const std::size_t len_1 = consecutive_len;
+                const std::size_t len_2 = used - consecutive_len;
 
-            std::memcpy(new_buffer, _buffer + _pos_read, len_1);
-            std::memcpy(new_buffer + len_1, _buffer, len_2);
+                std::memcpy(new_buffer, _buffer + _pos_read, len_1);
+                std::memcpy(new_buffer + len_1, _buffer, len_2);
+            }
         }
 
         _pos_read = 0;
         _pos_write = used;
 
-        this->deallocate(_buffer, _capacity);
+        if (_buffer)
+            this->deallocate(_buffer, _capacity);
         _buffer = new_buffer;
         _capacity = new_effective_capacity + 1;
 
@@ -213,8 +251,8 @@ private:
     std::byte* _buffer;
     std::size_t _capacity;
 
-    std::size_t _pos_read = 0;
-    std::size_t _pos_write = 0;
+    std::size_t _pos_read;
+    std::size_t _pos_write;
 };
 
 } // namespace rbb
