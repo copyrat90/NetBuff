@@ -7,7 +7,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace rbb
+namespace nb
 {
 
 /// @brief Ring buffer to store some bytes.
@@ -256,4 +256,4 @@ private:
     std::size_t _pos_write;
 };
 
-} // namespace rbb
+} // namespace nb

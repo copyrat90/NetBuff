@@ -95,7 +95,7 @@ int main()
         }
     };
 
-    rbb::RingByteBuffer ring(RING_SIZE);
+    nb::RingByteBuffer ring(RING_SIZE);
 
     auto ring_read = [&](int phase) {
         const auto used = ring.used_space();

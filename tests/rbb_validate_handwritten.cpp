@@ -24,7 +24,7 @@ static constexpr std::array<std::byte, 5> HELLO = {
 
 int main()
 {
-    rbb::RingByteBuffer ring;
+    nb::RingByteBuffer ring;
 
     std::byte temp = std::byte(0);
     std::array<std::byte, 5> temp_5;
@@ -68,7 +68,7 @@ int main()
     TEST_ASSERT(ring.empty());
 
     TEST_ASSERT(ring.try_write(HELLO.data(), sizeof(HELLO)));
-    rbb::RingByteBuffer new_ring(std::move(ring));
+    nb::RingByteBuffer new_ring(std::move(ring));
     TEST_ASSERT(ring.empty());
     TEST_ASSERT(ring.effective_capacity() == 0);
     TEST_ASSERT(new_ring.used_space() == 5);
