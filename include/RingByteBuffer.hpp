@@ -148,7 +148,7 @@ public:
 
         std::byte* new_buffer = (new_effective_capacity == 0) ? nullptr : this->allocate(new_effective_capacity + 1);
 
-        if (new_buffer)
+        if (new_buffer && !empty())
         {
             const std::size_t consecutive_len = consecutive_read_length();
             // 1-phase copy
