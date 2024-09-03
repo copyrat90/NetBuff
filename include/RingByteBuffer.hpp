@@ -197,11 +197,18 @@ public:
         return _pos_read == _pos_write;
     }
 
+    bool full() const
+    {
+        return available_space() == 0;
+    }
+
+    /// @brief Used space (i.e. How many bytes you can read before empty)
     auto used_space() const -> std::size_t
     {
         return (_capacity + _pos_write - _pos_read) % _capacity;
     }
 
+    /// @brief Available space (i.e. How many bytes you can write before full)
     auto available_space() const -> std::size_t
     {
         return effective_capacity() - used_space();
@@ -238,11 +245,13 @@ public:
         return _pos_write;
     }
 
+    // No checks performed - Use with caution!
     void move_read_pos(std::ptrdiff_t diff)
     {
         _pos_read = (_pos_read + diff + _capacity) % _capacity;
     }
 
+    // No checks performed - Use with caution!
     void move_write_pos(std::ptrdiff_t diff)
     {
         _pos_write = (_pos_write + diff + _capacity) % _capacity;
