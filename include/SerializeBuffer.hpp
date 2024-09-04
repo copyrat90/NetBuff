@@ -2,13 +2,34 @@
 
 #include <algorithm>
 #include <bit>
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace nb
 {
+
+template <typename T>
+concept UnsignedInteger = std::is_same_v<T, std::uint8_t> || std::is_same_v<T, std::uint16_t> ||
+                          std::is_same_v<T, std::uint32_t> || std::is_same_v<T, std::uint64_t>;
+
+template <typename T>
+concept Character = std::is_same_v<T, char> || std::is_same_v<T, wchar_t> || std::is_same_v<T, char8_t> ||
+                    std::is_same_v<T, char16_t> || std::is_same_v<T, char32_t>;
+
+template <typename T>
+concept String = std::is_same_v<T, std::basic_string<typename T::value_type>>;
+
+template <typename T>
+concept StringView = std::is_same_v<T, std::basic_string_view<typename T::value_type>>;
+
+template <typename T>
+concept StringOrStringView = String<T> || StringView<T>;
 
 /// @brief Buffer to serialize your message to a byte stream.
 ///
@@ -136,7 +157,7 @@ public:
     /// @brief Peek a `Num` data, with converting it to little-endian.
     template <typename Num>
         requires std::is_arithmetic_v<Num>
-    bool try_peek(Num data)
+    bool try_peek(Num& data)
     {
         const bool result = try_peek(&data, sizeof(data));
 
@@ -147,6 +168,135 @@ public:
         }
 
         return result;
+    }
+
+public:
+    /// @tparam LengthType Which type to use to store the length of the string (u8, u16, u32, u64)
+    template <StringOrStringView Str, UnsignedInteger LengthType = std::uint32_t>
+    bool try_write(const Str& str)
+    {
+        const auto str_bytes = str.length() * sizeof(typename Str::value_type);
+        if (sizeof(LengthType) + str_bytes > available_space())
+            return false;
+
+        // write length of `str`
+        [[maybe_unused]] bool result = try_write(static_cast<LengthType>(str.length()));
+        assert(result);
+
+        // only `std::u16string` & `std::u32string` are converted to little-endian
+        if constexpr ((std::is_same_v<Str, std::u16string> || std::is_same_v<Str, std::u16string_view> ||
+                       std::is_same_v<Str, std::u32string> || std::is_same_v<Str, std::u32string_view>) &&
+                      std::endian::native == std::endian::big)
+        {
+            for (auto ch : str)
+            {
+                result = try_write(ch); // byteswap inside
+                assert(result);
+            }
+        }
+        else
+        {
+            result = try_write(str.data(), str_bytes);
+            assert(result);
+        }
+
+        return true;
+    }
+
+    /// @tparam LengthType Which type to use to store the length of the string (u8, u16, u32, u64)
+    template <String Str, UnsignedInteger LengthType = std::uint32_t>
+    bool try_read(Str& str)
+    {
+        // read length of `str`
+        LengthType length;
+        if (!try_peek(length))
+            return false;
+
+        // check if valid length of payload exists
+        const auto payload_bytes = length * sizeof(typename Str::value_type);
+        if (sizeof(LengthType) + payload_bytes > used_space())
+            return false;
+
+        _pos_read += sizeof(LengthType);
+
+        // only `std::u16string` & `std::u32string` are converted to little-endian
+        if constexpr ((std::is_same_v<Str, std::u16string> || std::is_same_v<Str, std::u16string_view> ||
+                       std::is_same_v<Str, std::u32string> || std::is_same_v<Str, std::u32string_view>) &&
+                      std::endian::native == std::endian::big)
+        {
+            str.clear();
+            str.reserve(length);
+
+            for (std::size_t idx = 0; idx < length; ++idx)
+            {
+                typename Str::value_type ch;
+                [[maybe_unused]] const bool result = try_read(ch); // byteswap inside
+                assert(result);
+
+                str.push_back(ch);
+            }
+        }
+        else
+        {
+            str.resize(length);
+
+            [[maybe_unused]] const bool result = try_read(reinterpret_cast<std::byte*>(str.data()), payload_bytes);
+            assert(result);
+        }
+
+        return true;
+    }
+
+    /// @tparam LengthType Which type to use to store the length of the string (u8, u16, u32, u64)
+    template <String Str, UnsignedInteger LengthType = std::uint32_t>
+    bool try_peek(Str& str)
+    {
+        const auto prev_pos = _pos_read;
+
+        if (!try_read(str))
+            return false;
+
+        _pos_read = prev_pos;
+        return true;
+    }
+
+public:
+    template <Character Char, UnsignedInteger LengthType = std::uint32_t>
+    bool try_write(const Char* null_terminated_str)
+    {
+        return try_write(std::basic_string_view<Char>(null_terminated_str));
+    }
+
+    template <Character Char, UnsignedInteger LengthType = std::uint32_t>
+    bool try_read(Char* null_terminated_str)
+    {
+        // read length of `str`
+        LengthType length;
+        if (!try_peek(length))
+            return false;
+
+        const auto payload_bytes = length * sizeof(Char);
+        if (sizeof(LengthType) + payload_bytes > used_space())
+            return false;
+
+        std::memcpy(null_terminated_str, _buffer + _pos_read + sizeof(LengthType), length * sizeof(Char));
+        null_terminated_str[length] = Char{};
+
+        _pos_read += sizeof(LengthType) + payload_bytes;
+
+        return true;
+    }
+
+    template <Character Char, UnsignedInteger LengthType = std::uint32_t>
+    bool try_peek(Char* null_terminated_str)
+    {
+        const auto prev_pos = _pos_read;
+
+        if (!try_read(null_terminated_str))
+            return false;
+
+        _pos_read = prev_pos;
+        return true;
     }
 
 public:
