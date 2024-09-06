@@ -46,23 +46,28 @@ class SerializeBuffer : private ByteAllocator
     static_assert(std::is_same_v<std::byte, typename ByteAllocator::value_type>);
 
 public:
+    using DefaultStringLengthType = std::uint32_t;
+
+public:
     SerializeBuffer() : SerializeBuffer(0)
     {
     }
 
     SerializeBuffer(std::size_t capacity)
-        : _buffer(capacity == 0 ? nullptr : this->allocate(capacity)), _capacity(capacity), _pos_read(0), _pos_write(0)
+        : _buffer(capacity == 0 ? nullptr : this->allocate(capacity)), _capacity(capacity), _pos_read(0), _pos_write(0),
+          _fail(false)
     {
     }
 
     SerializeBuffer(SerializeBuffer&& other) noexcept
         : ByteAllocator(std::move(other)), _buffer(other._buffer), _capacity(other._capacity),
-          _pos_read(other._pos_read), _pos_write(other._pos_write)
+          _pos_read(other._pos_read), _pos_write(other._pos_write), _fail(other._fail)
     {
         other._buffer = nullptr;
         other._capacity = 0;
         other._pos_read = 0;
         other._pos_write = 0;
+        other._fail = false;
     }
 
     SerializeBuffer& operator=(SerializeBuffer&& other) noexcept
@@ -73,11 +78,13 @@ public:
         _capacity = other._capacity;
         _pos_read = other._pos_read;
         _pos_write = other._pos_write;
+        _fail = other._fail;
 
         other._buffer = nullptr;
         other._capacity = 0;
         other._pos_read = 0;
         other._pos_write = 0;
+        other._fail = false;
 
         return *this;
     }
@@ -93,10 +100,30 @@ public:
     }
 
 public:
+    /// @brief Check if read/write was failed once or more.
+    ///
+    /// Fail bit is never cleared unless `clear()` is called.
+    bool fail() const
+    {
+        return _fail;
+    }
+
+    /// @brief Check if read/write was not failed at all.
+    ///
+    /// Fail bit is never cleared unless `clear()` is called.
+    operator bool() const
+    {
+        return !fail();
+    }
+
+public:
     bool try_write(const void* data, std::size_t length)
     {
         if (length > available_space())
+        {
+            _fail = true;
             return false;
+        }
 
         std::memcpy(_buffer + _pos_write, data, length);
         move_write_pos(length);
@@ -116,7 +143,10 @@ public:
     bool try_peek(void* dest, std::size_t length)
     {
         if (length > used_space())
+        {
+            _fail = true;
             return false;
+        }
 
         std::memcpy(dest, _buffer + _pos_read, length);
 
@@ -138,6 +168,15 @@ public:
         return try_write(&data, sizeof(data));
     }
 
+    /// @brief Write a `Num` data, with converting it to little-endian.
+    template <typename Num>
+        requires std::is_arithmetic_v<Num>
+    auto operator<<(Num data) -> SerializeBuffer&
+    {
+        try_write<Num>(data);
+        return *this;
+    }
+
     /// @brief Read a `Num` data, with converting it to little-endian.
     template <typename Num>
         requires std::is_arithmetic_v<Num>
@@ -152,6 +191,15 @@ public:
         }
 
         return result;
+    }
+
+    /// @brief Read a `Num` data, with converting it to little-endian.
+    template <typename Num>
+        requires std::is_arithmetic_v<Num>
+    auto operator>>(Num& data) -> SerializeBuffer&
+    {
+        try_read<Num>(data);
+        return *this;
     }
 
     /// @brief Peek a `Num` data, with converting it to little-endian.
@@ -171,16 +219,19 @@ public:
     }
 
 public:
-    /// @tparam LengthType Which type to use to store the length of the string (u8, u16, u32, u64)
-    template <StringOrStringView Str, UnsignedInteger LengthType = std::uint32_t>
+    /// @tparam StringLengthType Which type to use to store the length of the string (u8, u16, u32, u64)
+    template <StringOrStringView Str, UnsignedInteger StringLengthType = DefaultStringLengthType>
     bool try_write(const Str& str)
     {
         const auto str_bytes = str.length() * sizeof(typename Str::value_type);
-        if (sizeof(LengthType) + str_bytes > available_space())
+        if (sizeof(StringLengthType) + str_bytes > available_space())
+        {
+            _fail = true;
             return false;
+        }
 
         // write length of `str`
-        [[maybe_unused]] bool result = try_write(static_cast<LengthType>(str.length()));
+        [[maybe_unused]] bool result = try_write(static_cast<StringLengthType>(str.length()));
         assert(result);
 
         // only `std::u16string` & `std::u32string` are converted to little-endian
@@ -203,21 +254,31 @@ public:
         return true;
     }
 
-    /// @tparam LengthType Which type to use to store the length of the string (u8, u16, u32, u64)
-    template <String Str, UnsignedInteger LengthType = std::uint32_t>
+    template <StringOrStringView Str>
+    auto operator<<(const Str& str) -> SerializeBuffer&
+    {
+        try_write<Str>(str);
+        return *this;
+    }
+
+    /// @tparam StringLengthType Which type to use to store the length of the string (u8, u16, u32, u64)
+    template <String Str, UnsignedInteger StringLengthType = DefaultStringLengthType>
     bool try_read(Str& str)
     {
         // read length of `str`
-        LengthType length;
+        StringLengthType length;
         if (!try_peek(length))
             return false;
 
         // check if valid length of payload exists
         const auto payload_bytes = length * sizeof(typename Str::value_type);
-        if (sizeof(LengthType) + payload_bytes > used_space())
+        if (sizeof(StringLengthType) + payload_bytes > used_space())
+        {
+            _fail = true;
             return false;
+        }
 
-        _pos_read += sizeof(LengthType);
+        _pos_read += sizeof(StringLengthType);
 
         // only `std::u16string` & `std::u32string` are converted to little-endian
         if constexpr ((std::is_same_v<Str, std::u16string> || std::is_same_v<Str, std::u16string_view> ||
@@ -247,8 +308,15 @@ public:
         return true;
     }
 
-    /// @tparam LengthType Which type to use to store the length of the string (u8, u16, u32, u64)
-    template <String Str, UnsignedInteger LengthType = std::uint32_t>
+    template <String Str>
+    auto operator>>(Str& str) -> SerializeBuffer&
+    {
+        try_read<Str>(str);
+        return *this;
+    }
+
+    /// @tparam StringLengthType Which type to use to store the length of the string (u8, u16, u32, u64)
+    template <String Str, UnsignedInteger StringLengthType = DefaultStringLengthType>
     bool try_peek(Str& str)
     {
         const auto prev_pos = _pos_read;
@@ -261,33 +329,50 @@ public:
     }
 
 public:
-    template <Character Char, UnsignedInteger LengthType = std::uint32_t>
+    template <Character Char, UnsignedInteger StringLengthType = DefaultStringLengthType>
     bool try_write(const Char* null_terminated_str)
     {
         return try_write(std::basic_string_view<Char>(null_terminated_str));
     }
 
-    template <Character Char, UnsignedInteger LengthType = std::uint32_t>
+    template <Character Char>
+    auto operator<<(const Char* null_terminated_str) -> SerializeBuffer&
+    {
+        try_write<Char>(null_terminated_str);
+        return *this;
+    }
+
+    template <Character Char, UnsignedInteger StringLengthType = DefaultStringLengthType>
     bool try_read(Char* null_terminated_str)
     {
         // read length of `str`
-        LengthType length;
+        StringLengthType length;
         if (!try_peek(length))
             return false;
 
         const auto payload_bytes = length * sizeof(Char);
-        if (sizeof(LengthType) + payload_bytes > used_space())
+        if (sizeof(StringLengthType) + payload_bytes > used_space())
+        {
+            _fail = true;
             return false;
+        }
 
-        std::memcpy(null_terminated_str, _buffer + _pos_read + sizeof(LengthType), length * sizeof(Char));
+        std::memcpy(null_terminated_str, _buffer + _pos_read + sizeof(StringLengthType), length * sizeof(Char));
         null_terminated_str[length] = Char{};
 
-        _pos_read += sizeof(LengthType) + payload_bytes;
+        _pos_read += sizeof(StringLengthType) + payload_bytes;
 
         return true;
     }
 
-    template <Character Char, UnsignedInteger LengthType = std::uint32_t>
+    template <Character Char>
+    auto operator>>(Char* null_terminated_str) -> SerializeBuffer&
+    {
+        try_read<Char>(null_terminated_str);
+        return *this;
+    }
+
+    template <Character Char, UnsignedInteger StringLengthType = DefaultStringLengthType>
     bool try_peek(Char* null_terminated_str)
     {
         const auto prev_pos = _pos_read;
@@ -304,6 +389,7 @@ public:
     {
         _pos_read = 0;
         _pos_write = 0;
+        _fail = false;
     }
 
     /// @brief Try resizing the buffer.
@@ -422,6 +508,8 @@ private:
 
     std::size_t _pos_read;
     std::size_t _pos_write;
+
+    bool _fail;
 };
 
 } // namespace nb
