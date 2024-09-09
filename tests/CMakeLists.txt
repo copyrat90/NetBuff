@@ -16,3 +16,7 @@ target_compile_options(rbb_validate_handwritten PRIVATE ${nb_compile_options})
 add_executable(sb_validate_automatic sb_validate_automatic.cpp)
 target_link_libraries(sb_validate_automatic PRIVATE NetBuff)
 target_compile_options(sb_validate_automatic PRIVATE ${nb_compile_options})
+
+add_executable(op_validate_automatic op_validate_automatic.cpp)
+target_link_libraries(op_validate_automatic PRIVATE NetBuff)
+target_compile_options(op_validate_automatic PRIVATE ${nb_compile_options})
