@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SerializeBuffer_fwd.hpp"
+
 #include <algorithm>
 #include <bit>
 #include <cassert>
@@ -40,7 +42,7 @@ concept StringOrStringView = String<T> || StringView<T>;
 /// You need to resize it manually via `try_resize()`.
 ///
 /// If you want to reuse an object of this class, you must call `clear()` to reset its positions to `0`.
-template <typename ByteAllocator = std::allocator<std::byte>>
+template <typename ByteAllocator>
 class SerializeBuffer : private ByteAllocator
 {
     static_assert(std::is_same_v<std::byte, typename ByteAllocator::value_type>);
@@ -140,7 +142,7 @@ public:
         return result;
     }
 
-    bool try_peek(void* dest, std::size_t length)
+    bool try_peek(void* dest, std::size_t length) const
     {
         if (length > used_space())
         {
@@ -205,7 +207,7 @@ public:
     /// @brief Peek a `Num` data, with converting it to little-endian.
     template <typename Num>
         requires std::is_arithmetic_v<Num>
-    bool try_peek(Num& data)
+    bool try_peek(Num& data) const
     {
         const bool result = try_peek(&data, sizeof(data));
 
@@ -317,14 +319,14 @@ public:
 
     /// @tparam StringLengthType Which type to use to store the length of the string (u8, u16, u32, u64)
     template <String Str, UnsignedInteger StringLengthType = DefaultStringLengthType>
-    bool try_peek(Str& str)
+    bool try_peek(Str& str) const
     {
         const auto prev_pos = _pos_read;
 
-        if (!try_read(str))
+        if (!const_cast<SerializeBuffer*>(this)->try_read(str))
             return false;
 
-        _pos_read = prev_pos;
+        const_cast<SerializeBuffer*>(this)->_pos_read = prev_pos;
         return true;
     }
 
@@ -373,14 +375,14 @@ public:
     }
 
     template <Character Char, UnsignedInteger StringLengthType = DefaultStringLengthType>
-    bool try_peek(Char* null_terminated_str)
+    bool try_peek(Char* null_terminated_str) const
     {
         const auto prev_pos = _pos_read;
 
-        if (!try_read(null_terminated_str))
+        if (!const_cast<SerializeBuffer*>(this)->try_read(null_terminated_str))
             return false;
 
-        _pos_read = prev_pos;
+        const_cast<SerializeBuffer*>(this)->_pos_read = prev_pos;
         return true;
     }
 
@@ -509,7 +511,7 @@ private:
     std::size_t _pos_read;
     std::size_t _pos_write;
 
-    bool _fail;
+    mutable bool _fail;
 };
 
 } // namespace nb

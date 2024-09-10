@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RingByteBuffer_fwd.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -14,7 +16,7 @@ namespace nb
 ///
 /// If the buffer is full, it DOESN'T increase its size automatically;
 /// You need to resize it manually via `try_resize()`.
-template <typename ByteAllocator = std::allocator<std::byte>>
+template <typename ByteAllocator>
 class RingByteBuffer : private ByteAllocator
 {
     static_assert(std::is_same_v<std::byte, typename ByteAllocator::value_type>);
@@ -102,7 +104,7 @@ public:
         return result;
     }
 
-    bool try_peek(void* dest, std::size_t length)
+    bool try_peek(void* dest, std::size_t length) const
     {
         if (length > used_space())
             return false;
