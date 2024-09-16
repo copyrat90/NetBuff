@@ -13,14 +13,24 @@ option(BENCHMARK_ENABLE_GTEST_TESTS FALSE)
 FetchContent_Declare(googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG main
+    GIT_SHALLOW TRUE
 )
 FetchContent_Declare(googlebenchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
     GIT_TAG main
+    GIT_SHALLOW TRUE
 )
+
+FetchContent_Declare(SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+)
+
 FetchContent_MakeAvailable(
     googletest
     googlebenchmark
+    SFML
 )
 
 add_executable(rbb_validate_automatic rbb_validate_automatic.cpp)
@@ -42,3 +52,8 @@ target_compile_options(op_validate_automatic PRIVATE ${nb_compile_options})
 add_executable(op_benchmark op_benchmark.cpp)
 target_link_libraries(op_benchmark PRIVATE NetBuff benchmark::benchmark)
 target_compile_options(op_benchmark PRIVATE ${nb_compile_options})
+
+add_executable(sb_benchmark sb_benchmark.cpp)
+target_link_libraries(sb_benchmark PRIVATE NetBuff benchmark::benchmark SFML::Network)
+target_compile_options(sb_benchmark PRIVATE ${nb_compile_options})
+set_property(TARGET sb_benchmark PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
