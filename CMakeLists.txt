@@ -13,9 +13,7 @@ $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
 $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic>
 )
 
-add_library(NetBuff INTERFACE
-include/RingByteBuffer.hpp
-)
+add_library(NetBuff INTERFACE)
 
 target_include_directories(NetBuff INTERFACE include/)
 target_compile_options(NetBuff INTERFACE ${nb_compile_options})
