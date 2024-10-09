@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectPool_fwd.hpp"
+#include "NetBuff/ObjectPool_fwd.hpp"
 
 #include <cassert>
 #include <cstddef>

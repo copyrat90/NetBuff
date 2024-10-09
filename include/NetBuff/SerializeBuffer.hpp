@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SerializeBuffer_fwd.hpp"
+#include "NetBuff/SerializeBuffer_fwd.hpp"
 
 #include <algorithm>
 #include <bit>

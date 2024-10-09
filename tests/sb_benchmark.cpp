@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "SerializeBuffer.hpp"
+#include "NetBuff/SerializeBuffer.hpp"
 
 #include <SFML/Network/Packet.hpp>
 

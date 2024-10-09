@@ -1,4 +1,4 @@
-#include "SerializeBuffer.hpp"
+#include "NetBuff/SerializeBuffer.hpp"
 
 #include <iostream>
 #include <random>

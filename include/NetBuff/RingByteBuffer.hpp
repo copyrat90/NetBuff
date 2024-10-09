@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RingByteBuffer_fwd.hpp"
+#include "NetBuff/RingByteBuffer_fwd.hpp"
 
 #include <algorithm>
 #include <cassert>

@@ -1,9 +1,9 @@
 #include <benchmark/benchmark.h>
 
 #define NB_OBJ_POOL_CHECK false
-#include "ObjectPool.hpp"
+#include "NetBuff/ObjectPool.hpp"
 
-#include "SerializeBuffer.hpp"
+#include "NetBuff/SerializeBuffer.hpp"
 
 #include <string>
 #include <string_view>

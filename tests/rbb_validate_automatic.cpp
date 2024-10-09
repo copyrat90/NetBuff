@@ -1,4 +1,4 @@
-#include "RingByteBuffer.hpp"
+#include "NetBuff/RingByteBuffer.hpp"
 
 #include <algorithm>
 #include <cassert>
