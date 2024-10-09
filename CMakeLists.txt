@@ -8,9 +8,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS FALSE)
 
 set(nb_compile_options
-$<$<CXX_COMPILER_ID:MSVC>:/W4 /Zc:preprocessor>
-$<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
-$<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /Zc:preprocessor /source-charset:utf-8>
+    $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic>
 )
 
 add_library(NetBuff INTERFACE)
