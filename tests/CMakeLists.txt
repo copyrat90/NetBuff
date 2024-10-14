@@ -51,6 +51,10 @@ add_executable(op_validate_automatic op_validate_automatic.cpp)
 target_link_libraries(op_validate_automatic PRIVATE NetBuff)
 target_compile_options(op_validate_automatic PRIVATE ${nb_compile_options})
 
+add_executable(il_validate_handwritten il_validate_handwritten.cpp)
+target_link_libraries(il_validate_handwritten PRIVATE NetBuff)
+target_compile_options(il_validate_handwritten PRIVATE ${nb_compile_options})
+
 if(NB_TEST_THIRD_PARTY_LIBS)
     add_executable(op_benchmark op_benchmark.cpp)
     target_link_libraries(op_benchmark PRIVATE NetBuff benchmark::benchmark)
