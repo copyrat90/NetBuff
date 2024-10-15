@@ -34,36 +34,102 @@ public:
     using const_pointer = const T*;
 
 public:
-    class const_iterator
+    class iterator
     {
     public:
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type = IntrusiveList::value_type;
         using difference_type = IntrusiveList::difference_type;
         using reference = IntrusiveList::reference;
-        using const_reference = IntrusiveList::const_reference;
         using pointer = IntrusiveList::pointer;
-        using const_pointer = IntrusiveList::const_pointer;
 
     private:
         friend class IntrusiveList;
 
-        explicit const_iterator(const IntrusiveListNode* node) : _node(const_cast<IntrusiveListNode*>(node))
-        {
-        }
-
-    protected:
         IntrusiveListNode* _node;
 
     public:
-        auto operator*() const -> const_reference
+        // To satisfy requirements of `std::bidirectional_iterator` concept, public default-initialization is required
+        explicit iterator(IntrusiveListNode* node = nullptr) : _node(node)
         {
-            return static_cast<const_reference>(*_node);
         }
 
-        auto operator->() const -> const_pointer
+    public:
+        auto operator*() const -> reference
         {
-            return static_cast<const_pointer>(_node);
+            return static_cast<reference>(*_node);
+        }
+
+        auto operator->() const -> pointer
+        {
+            return static_cast<pointer>(_node);
+        }
+
+        bool operator==(const iterator& other) const
+        {
+            return _node == other._node;
+        }
+
+        auto operator++() -> iterator&
+        {
+            _node = _node->next;
+            return *this;
+        }
+
+        auto operator++(int) -> iterator
+        {
+            auto it = *this;
+            operator++();
+            return it;
+        }
+
+        auto operator--() -> iterator&
+        {
+            _node = _node->prev;
+            return *this;
+        }
+
+        auto operator--(int) -> iterator
+        {
+            auto it = *this;
+            operator--();
+            return it;
+        }
+    };
+
+    class const_iterator
+    {
+    public:
+        using iterator_category = std::bidirectional_iterator_tag;
+        using value_type = IntrusiveList::value_type;
+        using difference_type = IntrusiveList::difference_type;
+        using reference = IntrusiveList::const_reference;
+        using pointer = IntrusiveList::const_pointer;
+
+    private:
+        friend class IntrusiveList;
+
+        IntrusiveListNode* _node; // `const_cast` to non-const, for convenience.
+
+    public:
+        // To satisfy requirements of `std::bidirectional_iterator` concept, public default-initialization is required
+        explicit const_iterator(const IntrusiveListNode* node = nullptr) : _node(const_cast<IntrusiveListNode*>(node))
+        {
+        }
+
+        const_iterator(iterator other) : _node(other._node)
+        {
+        }
+
+    public:
+        auto operator*() const -> reference
+        {
+            return static_cast<reference>(*_node);
+        }
+
+        auto operator->() const -> pointer
+        {
+            return static_cast<pointer>(_node);
         }
 
         bool operator==(const const_iterator& other) const
@@ -98,50 +164,8 @@ public:
         }
     };
 
-    class iterator : public const_iterator
-    {
-    private:
-        friend class IntrusiveList;
-
-        using const_iterator::const_iterator;
-
-    public:
-        auto operator*() -> reference
-        {
-            return static_cast<reference>(*this->_node);
-        }
-
-        auto operator->() -> pointer
-        {
-            return static_cast<pointer>(this->_node);
-        }
-
-        auto operator++() -> iterator&
-        {
-            this->_node = this->_node->next;
-            return *this;
-        }
-
-        auto operator++(int) -> iterator
-        {
-            auto it = *this;
-            operator++();
-            return it;
-        }
-
-        auto operator--() -> iterator&
-        {
-            this->_node = this->_node->prev;
-            return *this;
-        }
-
-        auto operator--(int) -> iterator
-        {
-            auto it = *this;
-            operator--();
-            return it;
-        }
-    };
+    static_assert(std::bidirectional_iterator<iterator>);
+    static_assert(std::bidirectional_iterator<const_iterator>);
 
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;

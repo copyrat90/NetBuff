@@ -106,6 +106,8 @@ int main()
     TEST_ASSERT(list2.size() == 5);
     list2.insert(++ ++list2.begin(), arr.begin() + 6, arr.begin() + 9);
     TEST_ASSERT(list_equals(list2, {3, 9, 6, 7, 8, 5, 1, 4}));
+    TEST_ASSERT(list2.crbegin()->num == 4);
+    TEST_ASSERT((--list2.rend())->num == 3);
     TEST_ASSERT(list2.size() == 8);
     list2.clear();
     TEST_ASSERT(list2.empty());
