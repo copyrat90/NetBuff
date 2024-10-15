@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 project(NetBuff)
 
-option(NB_BUILD_TEST FALSE)
+option(NB_TEST_ENABLED FALSE)
+option(NB_TEST_THIRD_PARTY_LIBS FALSE)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -18,7 +19,7 @@ add_library(NetBuff INTERFACE)
 target_include_directories(NetBuff INTERFACE include/)
 target_compile_options(NetBuff INTERFACE ${nb_compile_options})
 
-if(NB_BUILD_TEST)
+if(NB_TEST_ENABLED)
     include(CTest)
     enable_testing()
 
