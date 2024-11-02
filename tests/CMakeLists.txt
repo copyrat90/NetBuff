@@ -5,6 +5,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS FALSE)
 
+find_package(Threads)
+
+set(SANITIZER_AVAILABLE FALSE)
+if(NOT WIN32)
+    if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+        set(SANITIZER_AVAILABLE TRUE)
+    endif()
+endif()
+
 if(NB_TEST_BENCHMARK)
     include(FetchContent)
 
@@ -58,6 +67,14 @@ target_compile_options(il_validate_handwritten PRIVATE ${nb_compile_options})
 add_executable(il_validate_automatic il_validate_automatic.cpp)
 target_link_libraries(il_validate_automatic PRIVATE NetBuff)
 target_compile_options(il_validate_automatic PRIVATE ${nb_compile_options})
+
+add_executable(srbb_validate_automatic srbb_validate_automatic.cpp)
+target_link_libraries(srbb_validate_automatic PRIVATE NetBuff Threads::Threads)
+target_compile_options(srbb_validate_automatic PRIVATE ${nb_compile_options})
+if(SANITIZER_AVAILABLE)
+    target_compile_options(srbb_validate_automatic PRIVATE -fsanitize=thread)
+    target_link_options(srbb_validate_automatic PRIVATE -fsanitize=thread)
+endif()
 
 if(NB_TEST_BENCHMARK)
     add_executable(op_benchmark op_benchmark.cpp)

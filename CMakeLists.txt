@@ -9,8 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS FALSE)
 
 set(nb_compile_options
-    $<$<CXX_COMPILER_ID:MSVC>:/W4 /Zc:preprocessor /source-charset:utf-8>
-    $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /Zc:preprocessor /source-charset:utf-8 /wd4324>
+    $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -Wno-interference-size>
     $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic>
 )
 
@@ -28,4 +28,7 @@ if(NB_TEST_ENABLED)
     add_test(NAME test_sb_validate_automatic COMMAND sb_validate_automatic)
     add_test(NAME test_op_validate_automatic COMMAND op_validate_automatic)
     add_test(NAME test_il_validate_automatic COMMAND il_validate_automatic)
+
+    add_test(NAME test_srbb_validate_automatic COMMAND srbb_validate_automatic)
+    set_tests_properties(test_srbb_validate_automatic PROPERTIES ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1")
 endif()
