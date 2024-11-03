@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS FALSE)
 
-if(NB_TEST_THIRD_PARTY_LIBS)
+if(NB_TEST_BENCHMARK)
     include(FetchContent)
 
     # https://github.com/google/benchmark/issues/1845
@@ -59,7 +59,7 @@ add_executable(il_validate_automatic il_validate_automatic.cpp)
 target_link_libraries(il_validate_automatic PRIVATE NetBuff)
 target_compile_options(il_validate_automatic PRIVATE ${nb_compile_options})
 
-if(NB_TEST_THIRD_PARTY_LIBS)
+if(NB_TEST_BENCHMARK)
     add_executable(op_benchmark op_benchmark.cpp)
     target_link_libraries(op_benchmark PRIVATE NetBuff benchmark::benchmark)
     target_compile_options(op_benchmark PRIVATE ${nb_compile_options})
