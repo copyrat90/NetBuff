@@ -99,7 +99,7 @@ int main()
 
     auto buf_write_int = [&]() {
         std::uniform_int_distribution size_dist(0, 3);
-        const auto size = (1ULL << size_dist(rng));
+        const auto size = (std::size_t(1) << size_dist(rng));
 
         switch (size)
         {
