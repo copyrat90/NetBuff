@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 project(NetBuff)
 
+option(NB_MSVC_UTF8 "Use /utf-8 for MSVC" TRUE)
+
 option(NB_TEST_ENABLED "Enable testing" FALSE)
 option(NB_TEST_BENCHMARK "Enable benchmark tests" FALSE)
 option(NB_TEST_MSVC_SANITIZER "Enable msvc sanitizer for tests" FALSE)
@@ -10,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS FALSE)
 
 set(nb_compile_options
-    $<$<CXX_COMPILER_ID:MSVC>:/W4 /Zc:preprocessor /source-charset:utf-8 /wd4324>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /Zc:preprocessor /wd4324 $<IF:$<BOOL:${NB_MSVC_UTF8}>,/utf-8,/source-charset:utf-8>>
     $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -Wno-interference-size>
     $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic>
 )
