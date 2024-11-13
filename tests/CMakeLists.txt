@@ -18,7 +18,7 @@ if(NB_TEST_BENCHMARK)
     include(FetchContent)
 
     # https://github.com/google/benchmark/issues/1845
-    option(BENCHMARK_ENABLE_GTEST_TESTS FALSE)
+    option(BENCHMARK_ENABLE_GTEST_TESTS "Enable GTest tests" FALSE)
 
     FetchContent_Declare(googletest
         GIT_REPOSITORY https://github.com/google/googletest.git

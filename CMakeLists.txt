@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 project(NetBuff)
 
-option(NB_TEST_ENABLED FALSE)
-option(NB_TEST_BENCHMARK FALSE)
-option(NB_TEST_MSVC_SANITIZER FALSE)
+option(NB_TEST_ENABLED "Enable testing" FALSE)
+option(NB_TEST_BENCHMARK "Enable benchmark tests" FALSE)
+option(NB_TEST_MSVC_SANITIZER "Enable msvc sanitizer for tests" FALSE)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
