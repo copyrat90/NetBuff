@@ -397,30 +397,27 @@ public:
     /// @brief Try resizing the buffer.
     ///
     /// If requested capacity is not enough to store the existing data in it, this function fails.
-    /// If requested capacity is same as before, this function fails.
+    ///
+    /// If requested capacity is same or less than before, this function succeeds, but it's capacity remains the same.
+    /// If you want to shrink the reserved space, use `shrink_to_fit()` instead.
     ///
     /// @return Whether the resize took place or not
     bool try_resize(std::size_t new_capacity)
     {
         const std::size_t used = used_space();
 
-        if (new_capacity < used || new_capacity == _capacity)
+        if (new_capacity < used)
             return false;
+        if (new_capacity <= _capacity)
+            return true;
 
-        std::byte* new_buffer = (new_capacity == 0) ? nullptr : this->allocate(new_capacity);
-
-        if (new_buffer && !empty())
-            std::memcpy(new_buffer, _buffer + _pos_read, used);
-
-        _pos_read = 0;
-        _pos_write = used;
-
-        if (_buffer)
-            this->deallocate(_buffer, _capacity);
-        _buffer = new_buffer;
-        _capacity = new_capacity;
-
+        resize(new_capacity);
         return true;
+    }
+
+    void shrink_to_fit()
+    {
+        resize(used_space());
     }
 
 public:
@@ -491,6 +488,25 @@ public:
     void move_write_pos(std::ptrdiff_t diff)
     {
         _pos_write += diff;
+    }
+
+private:
+    void resize(std::size_t new_capacity)
+    {
+        const std::size_t used = used_space();
+
+        std::byte* new_buffer = (new_capacity == 0) ? nullptr : this->allocate(new_capacity);
+
+        if (new_buffer && !empty())
+            std::memcpy(new_buffer, _buffer + _pos_read, used);
+
+        _pos_read = 0;
+        _pos_write = used;
+
+        if (_buffer)
+            this->deallocate(_buffer, _capacity);
+        _buffer = new_buffer;
+        _capacity = new_capacity;
     }
 
 private:
