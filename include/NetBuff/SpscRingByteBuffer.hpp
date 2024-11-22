@@ -29,14 +29,14 @@ public:
     }
 
     SpscRingByteBuffer(std::size_t effective_capacity)
-        : _buffer(effective_capacity == 0 ? nullptr : this->allocate(effective_capacity + 1)),
-          _capacity(effective_capacity + 1), _pos_read(0), _pos_write(0)
+        : _pos_read(0), _buffer(effective_capacity == 0 ? nullptr : this->allocate(effective_capacity + 1)),
+          _capacity(effective_capacity + 1), _pos_write(0)
     {
     }
 
     SpscRingByteBuffer(SpscRingByteBuffer&& other) noexcept
-        : ByteAllocator(std::move(other)), _buffer(other._buffer), _capacity(other._capacity),
-          _pos_read(other._pos_read.load(std::memory_order_relaxed)),
+        : ByteAllocator(std::move(other)), _pos_read(other._pos_read.load(std::memory_order_relaxed)),
+          _buffer(other._buffer), _capacity(other._capacity),
           _pos_write(other._pos_write.load(std::memory_order_relaxed))
     {
         other._buffer = nullptr;
@@ -286,11 +286,14 @@ private:
     static_assert(std::atomic<std::size_t>::is_always_lock_free);
     static constexpr std::size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size;
 
+    std::atomic<std::size_t> _pos_read;
+
     std::byte* _buffer;
     std::size_t _capacity;
 
-    alignas(CACHE_LINE_SIZE) std::atomic<std::size_t> _pos_read;
-    alignas(CACHE_LINE_SIZE) std::atomic<std::size_t> _pos_write;
+    std::byte _padding_cache_line[CACHE_LINE_SIZE - sizeof(_pos_read) - sizeof(_buffer) - sizeof(_capacity)];
+
+    std::atomic<std::size_t> _pos_write;
 };
 
 } // namespace nb
