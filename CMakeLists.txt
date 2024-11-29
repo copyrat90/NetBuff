@@ -28,6 +28,7 @@ if(NB_TEST_ENABLED)
 
     add_subdirectory(tests/)
     add_test(NAME test_rbb_validate_automatic COMMAND rbb_validate_automatic)
+    add_test(NAME test_rq_validate_automatic COMMAND rq_validate_automatic)
     add_test(NAME test_sb_validate_automatic COMMAND sb_validate_automatic)
     add_test(NAME test_op_validate_automatic COMMAND op_validate_automatic)
     add_test(NAME test_il_validate_automatic COMMAND il_validate_automatic)
