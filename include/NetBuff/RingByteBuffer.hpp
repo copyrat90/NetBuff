@@ -32,35 +32,19 @@ public:
     {
     }
 
-    RingByteBuffer(RingByteBuffer&& other) noexcept
-        : ByteAllocator(std::move(other)), _buffer(other._buffer), _capacity(other._capacity),
-          _pos_read(other._pos_read), _pos_write(other._pos_write)
+    RingByteBuffer(RingByteBuffer&& other) noexcept : RingByteBuffer(0)
     {
-        other._buffer = nullptr;
-        other._capacity = 1;
-        other._pos_read = 0;
-        other._pos_write = 0;
+        swap(other);
     }
 
-    RingByteBuffer& operator=(RingByteBuffer&& other) noexcept
+    // Move and swap idiom
+    RingByteBuffer& operator=(RingByteBuffer other) noexcept
     {
-        ByteAllocator::operator=(std::move(other));
-
-        _buffer = other._buffer;
-        _capacity = other._capacity;
-        _pos_read = other._pos_read;
-        _pos_write = other._pos_write;
-
-        other._buffer = nullptr;
-        other._capacity = 1;
-        other._pos_read = 0;
-        other._pos_write = 0;
-
+        swap(other);
         return *this;
     }
 
     RingByteBuffer(const RingByteBuffer&) = delete;
-    RingByteBuffer& operator=(const RingByteBuffer&) = delete;
 
 public:
     ~RingByteBuffer()
@@ -180,6 +164,19 @@ public:
         _capacity = new_effective_capacity + 1;
 
         return true;
+    }
+
+    void swap(RingByteBuffer& other) noexcept
+    {
+        using std::swap;
+
+        if constexpr (std::allocator_traits<ByteAllocator>::propagate_on_container_swap::value)
+            swap<ByteAllocator>(*this, other);
+
+        swap(_buffer, other._buffer);
+        swap(_capacity, other._capacity);
+        swap(_pos_read, other._pos_read);
+        swap(_pos_write, other._pos_write);
     }
 
 public:

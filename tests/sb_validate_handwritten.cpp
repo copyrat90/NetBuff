@@ -41,8 +41,19 @@ int main()
     TEST_ASSERT(buf >> data_16);
     TEST_ASSERT(16 == data_16);
     TEST_ASSERT(buf.empty());
-    buf.shrink_to_fit();
+
+    nb::SerializeBuffer<> buf2(std::move(buf));
     TEST_ASSERT(0 == buf.capacity());
+    TEST_ASSERT(2 == buf2.capacity());
+    buf2.shrink_to_fit();
+    TEST_ASSERT(0 == buf2.capacity());
+    TEST_ASSERT(buf2.try_resize(2));
+    TEST_ASSERT(buf.try_resize(1));
+    TEST_ASSERT(1 == buf.capacity());
+    TEST_ASSERT(2 == buf2.capacity());
+    buf2 = std::move(buf);
+    TEST_ASSERT(0 == buf.capacity());
+    TEST_ASSERT(1 == buf2.capacity());
 
     std::cout << "All is well!" << std::endl;
 }

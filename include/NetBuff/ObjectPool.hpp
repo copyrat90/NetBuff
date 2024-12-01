@@ -116,31 +116,11 @@ public:
             add_new_block();
     }
 
-    ObjectPool(ObjectPool&& other) noexcept
-        : _node_head(other._node_head), _block_head(other._block_head),
-#if NB_OBJ_POOL_CHECK
-          _err(other._err),
-#endif
-          _next_block_node_count(other._next_block_node_count), _capacity(other._capacity),
-          _used_nodes(other._used_nodes)
-    {
-        other._node_head = nullptr;
-        other._block_head = nullptr;
-
-#if NB_OBJ_POOL_CHECK
-        other._err = nullptr;
-#endif
-
-        other._next_block_node_count = INIT_BLOCK_NODE_COUNT;
-
-        other._capacity = 0;
-        other._used_nodes = 0;
-    }
-
-    ObjectPool& operator=(ObjectPool&& other) noexcept = delete;
-
     ObjectPool(const ObjectPool&) = delete;
     ObjectPool& operator=(const ObjectPool&) = delete;
+
+    ObjectPool(ObjectPool&&) = delete;
+    ObjectPool& operator=(ObjectPool&&) = delete;
 
 public:
     ~ObjectPool()

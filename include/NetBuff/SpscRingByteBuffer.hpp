@@ -34,36 +34,11 @@ public:
     {
     }
 
-    SpscRingByteBuffer(SpscRingByteBuffer&& other) noexcept
-        : ByteAllocator(std::move(other)), _pos_read(other._pos_read.load(std::memory_order_relaxed)),
-          _buffer(other._buffer), _capacity(other._capacity),
-          _pos_write(other._pos_write.load(std::memory_order_relaxed))
-    {
-        other._buffer = nullptr;
-        other._capacity = 1;
-        other._pos_read.store(0, std::memory_order_relaxed);
-        other._pos_write.store(0, std::memory_order_relaxed);
-    }
-
-    SpscRingByteBuffer& operator=(SpscRingByteBuffer&& other) noexcept
-    {
-        ByteAllocator::operator=(std::move(other));
-
-        _buffer = other._buffer;
-        _capacity = other._capacity;
-        _pos_read.store(other._pos_read.load(std::memory_order_relaxed), std::memory_order_relaxed);
-        _pos_write.store(other._pos_write.load(std::memory_order_relaxed), std::memory_order_relaxed);
-
-        other._buffer = nullptr;
-        other._capacity = 1;
-        other._pos_read.store(0, std::memory_order_relaxed);
-        other._pos_write.store(0, std::memory_order_relaxed);
-
-        return *this;
-    }
-
     SpscRingByteBuffer(const SpscRingByteBuffer&) = delete;
     SpscRingByteBuffer& operator=(const SpscRingByteBuffer&) = delete;
+
+    SpscRingByteBuffer(SpscRingByteBuffer&&) = delete;
+    SpscRingByteBuffer& operator=(SpscRingByteBuffer&&) = delete;
 
 public:
     ~SpscRingByteBuffer()

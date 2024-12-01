@@ -61,38 +61,19 @@ public:
     {
     }
 
-    SerializeBuffer(SerializeBuffer&& other) noexcept
-        : ByteAllocator(std::move(other)), _buffer(other._buffer), _capacity(other._capacity),
-          _pos_read(other._pos_read), _pos_write(other._pos_write), _fail(other._fail)
+    SerializeBuffer(SerializeBuffer&& other) noexcept : SerializeBuffer(0)
     {
-        other._buffer = nullptr;
-        other._capacity = 0;
-        other._pos_read = 0;
-        other._pos_write = 0;
-        other._fail = false;
+        swap(other);
     }
 
-    SerializeBuffer& operator=(SerializeBuffer&& other) noexcept
+    // Move and swap idiom
+    SerializeBuffer& operator=(SerializeBuffer other) noexcept
     {
-        ByteAllocator::operator=(std::move(other));
-
-        _buffer = other._buffer;
-        _capacity = other._capacity;
-        _pos_read = other._pos_read;
-        _pos_write = other._pos_write;
-        _fail = other._fail;
-
-        other._buffer = nullptr;
-        other._capacity = 0;
-        other._pos_read = 0;
-        other._pos_write = 0;
-        other._fail = false;
-
+        swap(other);
         return *this;
     }
 
     SerializeBuffer(const SerializeBuffer&) = delete;
-    SerializeBuffer& operator=(const SerializeBuffer&) = delete;
 
 public:
     ~SerializeBuffer()
@@ -418,6 +399,20 @@ public:
     void shrink_to_fit()
     {
         resize(used_space());
+    }
+
+    void swap(SerializeBuffer& other) noexcept
+    {
+        using std::swap;
+
+        if constexpr (std::allocator_traits<ByteAllocator>::propagate_on_container_swap::value)
+            swap<ByteAllocator>(*this, other);
+
+        swap(_buffer, other._buffer);
+        swap(_capacity, other._capacity);
+        swap(_pos_read, other._pos_read);
+        swap(_pos_write, other._pos_write);
+        swap(_fail, other._fail);
     }
 
 public:

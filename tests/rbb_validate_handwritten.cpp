@@ -77,5 +77,14 @@ int main()
     TEST_ASSERT(temp_5 == HELLO);
     TEST_ASSERT(new_ring.empty());
 
+    ring.try_resize(1);
+    TEST_ASSERT(ring.empty());
+    TEST_ASSERT(ring.effective_capacity() == 1);
+    ring = std::move(new_ring);
+    TEST_ASSERT(new_ring.empty());
+    TEST_ASSERT(new_ring.effective_capacity() == 0);
+    TEST_ASSERT(ring.empty());
+    TEST_ASSERT(ring.effective_capacity() == 5);
+
     std::cout << "All is well!" << std::endl;
 }

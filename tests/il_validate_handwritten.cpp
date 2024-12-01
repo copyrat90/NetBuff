@@ -109,8 +109,11 @@ int main()
     TEST_ASSERT(list2.crbegin()->num == 4);
     TEST_ASSERT((--list2.rend())->num == 3);
     TEST_ASSERT(list2.size() == 8);
-    list2.clear();
+    list = std::move(list2);
     TEST_ASSERT(list2.empty());
+    TEST_ASSERT(list_equals(list, {3, 9, 6, 7, 8, 5, 1, 4}));
+    list.clear();
+    TEST_ASSERT(list.empty());
 
     std::cout << "All is well!" << std::endl;
 }
