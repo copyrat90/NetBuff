@@ -173,13 +173,13 @@ public:
 
         if constexpr (CallDestructorOnDestroy)
         {
-            new (cur->data) T(std::forward<Args>(args)...);
+            ::new (static_cast<void*>(cur->data)) T(std::forward<Args>(args)...);
         }
         else
         {
             if (!cur->constructed)
             {
-                new (cur->data) T(std::forward<Args>(args)...);
+                ::new (static_cast<void*>(cur->data)) T(std::forward<Args>(args)...);
                 cur->constructed = true;
             }
         }
