@@ -7,6 +7,7 @@
 #include <limits>
 #include <random>
 #include <source_location>
+#include <sstream>
 #include <unordered_set>
 #include <utility>
 
@@ -94,9 +95,15 @@ int main()
     std::uniform_int_distribution add_dist(0, ADD_ITEM_MULTIPLIER);
     std::uniform_int_distribution all_int_dist(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
 
+    std::ostringstream err_no_destroy_oss;
+    std::ostringstream err_destroy_oss;
+
     {
         nb::ObjectPool<Item<0>, false> no_destroy_pool;
         nb::ObjectPool<Item<1>, true> destroy_pool;
+
+        no_destroy_pool.set_err_stream(&err_no_destroy_oss);
+        destroy_pool.set_err_stream(&err_destroy_oss);
 
         std::unordered_set<SetItem> item_set;
         item_set.reserve(ITEMS);
@@ -153,6 +160,20 @@ int main()
         TEST_ASSERT(Item<1>::alive_count == 0);
     }
     TEST_ASSERT(Item<0>::alive_count == 0);
+
+    std::string err_str = err_no_destroy_oss.str();
+    if (!err_str.empty())
+    {
+        std::cout << err_str << std::endl;
+        std::exit(3);
+    }
+
+    err_str = err_destroy_oss.str();
+    if (!err_str.empty())
+    {
+        std::cout << err_str << std::endl;
+        std::exit(4);
+    }
 
     std::cout << "All is well!" << std::endl;
 }

@@ -33,6 +33,10 @@ if(NB_TEST_ENABLED)
     add_test(NAME test_op_validate_automatic COMMAND op_validate_automatic)
     add_test(NAME test_il_validate_automatic COMMAND il_validate_automatic)
 
+    add_test(NAME test_lop_validate_automatic_asan COMMAND lop_validate_automatic_asan)
+    add_test(NAME test_lop_validate_automatic_tsan COMMAND lop_validate_automatic_tsan)
+    set_tests_properties(test_lop_validate_automatic_tsan PROPERTIES ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1")
+
     add_test(NAME test_srbb_validate_automatic COMMAND srbb_validate_automatic)
     set_tests_properties(test_srbb_validate_automatic PROPERTIES ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1")
 endif()
