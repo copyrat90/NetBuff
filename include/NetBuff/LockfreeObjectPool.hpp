@@ -2,27 +2,24 @@
 
 #include "NetBuff/LockfreeObjectPool_fwd.hpp"
 
+#include "NetBuff/TaggedPtr.hpp"
+
 #include <atomic>
-#include <bit>
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
-#include <format>
 #include <memory>
 #include <mutex>
-#include <stdexcept>
 #include <utility>
-
-#ifndef NB_VA_BITS
-#define NB_VA_BITS 56
-#endif
 
 #ifndef NB_OBJ_POOL_CHECK
 #define NB_OBJ_POOL_CHECK true
 #endif
 
 #if NB_OBJ_POOL_CHECK
+#include <cstdint>
+#include <format>
 #include <ostream>
+#include <stdexcept>
 #endif
 
 namespace nb
@@ -110,92 +107,6 @@ private:
     static constexpr std::size_t INIT_BLOCK_NODE_COUNT = 16;
     static_assert(INIT_BLOCK_NODE_COUNT > 0);
 
-private:
-    class TaggedNodePtr
-    {
-    private:
-        std::uintptr_t _tagged_addr;
-
-    public:
-        static_assert(std::has_single_bit(alignof(Node)), "Not power of two alignment for `Node`");
-        static_assert(sizeof(_tagged_addr) == 8, "LockfreeObjectPool only supports 64-bit architecture");
-        static_assert(8 <= NB_VA_BITS && NB_VA_BITS <= 64, "Invalid `NB_VA_BITS`");
-
-    public:
-        static constexpr std::size_t UPPER_TAG_BITS = 64 - NB_VA_BITS;
-        static constexpr std::uintptr_t UPPER_TAG_MASK = ((std::uintptr_t(1) << UPPER_TAG_BITS) - 1) << NB_VA_BITS;
-
-        static constexpr std::size_t LOWER_TAG_BITS = std::countr_zero(alignof(Node));
-        static constexpr std::uintptr_t LOWER_TAG_MASK = alignof(Node) - 1;
-
-        static_assert(!(UPPER_TAG_MASK & LOWER_TAG_MASK), "Tag masks overlap; Possibly invalid `NB_VA_BITS`");
-        static_assert(NB_VA_BITS >= LOWER_TAG_BITS,
-                      "`NB_VA_BITS` is smaller than `Node` alignment; Possibly invalid `NB_VA_BITS`");
-
-        static constexpr std::uintptr_t TAG_MASK = UPPER_TAG_MASK | LOWER_TAG_MASK;
-
-    public:
-        explicit TaggedNodePtr(Node* node) : _tagged_addr(reinterpret_cast<decltype(_tagged_addr)>(node))
-        {
-            // `node` should hold aligned address value
-            assert(!(_tagged_addr & LOWER_TAG_MASK));
-
-            if (_tagged_addr & UPPER_TAG_MASK)
-                throw std::logic_error(
-                    std::format("Invalid node address `0x{:016x}` when `NB_VA_BITS` is {}", _tagged_addr, NB_VA_BITS));
-        }
-
-        TaggedNodePtr() : _tagged_addr(0)
-        {
-        }
-
-    public:
-        auto get_node_ptr() const noexcept -> Node*
-        {
-            return reinterpret_cast<Node*>(_tagged_addr & ~TAG_MASK);
-        }
-
-        explicit operator Node*() const noexcept
-        {
-            return get_node_ptr();
-        }
-
-        auto operator*() const noexcept -> Node&
-        {
-            return *get_node_ptr();
-        }
-
-        auto operator->() const noexcept -> Node*
-        {
-            return get_node_ptr();
-        }
-
-        operator bool() const noexcept
-        {
-            return get_node_ptr();
-        }
-
-    public:
-        auto get_tag() const noexcept -> std::uintptr_t
-        {
-            return ((_tagged_addr & UPPER_TAG_MASK) >> (NB_VA_BITS - LOWER_TAG_BITS)) | (_tagged_addr & LOWER_TAG_MASK);
-        }
-
-        void set_tag(std::uintptr_t tag_value) noexcept
-        {
-            const std::uintptr_t upper = (tag_value & (UPPER_TAG_MASK >> (NB_VA_BITS - LOWER_TAG_BITS)))
-                                         << (NB_VA_BITS - LOWER_TAG_BITS);
-            const std::uintptr_t lower = tag_value & LOWER_TAG_MASK;
-
-            _tagged_addr = (_tagged_addr & ~TAG_MASK) | (upper | lower);
-        }
-
-        void increase_tag() noexcept
-        {
-            set_tag(get_tag() + 1);
-        }
-    };
-
 public:
     LockfreeObjectPool() : LockfreeObjectPool(0)
     {
@@ -230,7 +141,7 @@ public:
         if constexpr (!CallDestructorOnDestroy)
         {
             // Destroy all `T`s in nodes
-            Node* node = _node_head.load().get_node_ptr();
+            Node* node = _node_head.load().get_ptr();
             while (node)
             {
                 if (node->constructed)
@@ -257,7 +168,7 @@ public:
     template <typename... Args>
     [[nodiscard]] auto construct(Args&&... args) -> T&
     {
-        TaggedNodePtr cur = _node_head.load();
+        TaggedPtr<Node> cur = _node_head.load();
         for (;;)
         {
             // if there's no unused node available, allocate a new block and try getting one again
@@ -268,8 +179,7 @@ public:
             }
 
             // if got the candidate `cur` node, prepare `next` node
-            TaggedNodePtr next(cur->next);
-            next.set_tag(cur.get_tag() + 1); // prevent ABA problem w/ increasing tag
+            TaggedPtr<Node> next(cur->next, cur.get_tag() + 1); // prevent ABA problem w/ increasing tag
 
             // try exchanging `_node_head` to `next`, and break if succeeds
             if (_node_head.compare_exchange_weak(cur, next))
@@ -311,12 +221,12 @@ public:
         if constexpr (CallDestructorOnDestroy)
             obj.~T();
 
-        TaggedNodePtr old_head = _node_head.load();
-        TaggedNodePtr new_head(&node);
+        TaggedPtr<Node> old_head = _node_head.load();
+        TaggedPtr<Node> new_head(&node);
         for (;;)
         {
             // prepare `new_head`
-            node.next = old_head.get_node_ptr();
+            node.next = old_head.get_ptr();
             new_head.set_tag(old_head.get_tag());
 
             // try exchanging `_node_head` to `new_head`, and break if succeeds
@@ -413,12 +323,12 @@ private:
 #endif
             if constexpr (!CallDestructorOnDestroy)
                 last_node.constructed = false;
-            TaggedNodePtr old_head = _node_head.load();
-            TaggedNodePtr new_head(nodes);
+            TaggedPtr<Node> old_head = _node_head.load();
+            TaggedPtr<Node> new_head(nodes);
             for (;;)
             {
                 // prepare `new_head`
-                last_node.next = old_head.get_node_ptr();
+                last_node.next = old_head.get_ptr();
                 new_head.set_tag(old_head.get_tag());
 
                 // try exchanging `_node_head` to `new_head`, and break if succeeds
@@ -441,7 +351,7 @@ private:
     }
 
 private:
-    std::atomic<TaggedNodePtr> _node_head;
+    std::atomic<TaggedPtr<Node>> _node_head;
 
     std::mutex _block_mutex;
 
@@ -456,7 +366,7 @@ private:
     std::atomic<std::size_t> _capacity; // total nodes count
     std::atomic<std::size_t> _used_nodes;
 
-    static_assert(std::atomic<TaggedNodePtr>::is_always_lock_free);
+    static_assert(std::atomic<TaggedPtr<Node>>::is_always_lock_free);
     static_assert(std::atomic<std::size_t>::is_always_lock_free);
 };
 
