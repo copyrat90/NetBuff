@@ -132,8 +132,10 @@ public:
 #if NB_OBJ_POOL_CHECK
         if (_err)
         {
-            if (used_slots() > 0)
-                (*_err) << std::format("[LEAK] {} nodes are not returned to `LockfreeObjectPool` at {}\n", used_slots(),
+            const auto used_nodes = _used_nodes.load();
+
+            if (used_nodes > 0)
+                (*_err) << std::format("[LEAK] {} nodes are not returned to `LockfreeObjectPool` at {}\n", used_nodes,
                                        reinterpret_cast<std::uintptr_t>(this));
         }
 #endif
@@ -186,7 +188,7 @@ public:
                 break;
         }
 
-        ++_used_nodes;
+        _used_nodes.fetch_add(1, std::memory_order_release);
 
         if constexpr (CallDestructorOnDestroy)
         {
@@ -234,26 +236,30 @@ public:
                 break;
         }
 
-        --_used_nodes;
+        _used_nodes.fetch_sub(1, std::memory_order_relaxed);
     }
 
 public:
-    /// @return number of total slots that can store `T`
-    auto capacity() const -> std::size_t
+    // (Monitoring only) number of total slots that can store `T`
+    auto monitor_capacity() const -> std::size_t
     {
-        return _capacity;
+        return _capacity.load(std::memory_order_relaxed);
     }
 
-    /// @return number of used slots that can store `T`
-    auto used_slots() const -> std::size_t
+    // (Monitoring only) number of used slots that can store `T`
+    auto monitor_used_slots() const -> std::size_t
     {
-        return _used_nodes;
+        return _used_nodes.load(std::memory_order_relaxed);
     }
 
-    /// @return number of unused slots that can store `T`
-    auto unused_slots() const -> std::size_t
+    // (Monitoring only) number of unused slots that can store `T`
+    auto monitor_unused_slots() const -> std::size_t
     {
-        return _capacity - _used_nodes;
+        const std::size_t used_nodes = _used_nodes.load(std::memory_order_acquire);
+        const std::size_t capacity = _capacity.load(std::memory_order_relaxed);
+        assert(capacity >= used_nodes);
+
+        return capacity - used_nodes;
     }
 
 #if NB_OBJ_POOL_CHECK
@@ -337,8 +343,8 @@ private:
             }
 
             // adjust internal sizes
-            _capacity += _next_block_node_count;
-            _next_block_node_count = _capacity;
+            _capacity.fetch_add(_next_block_node_count, std::memory_order_relaxed);
+            _next_block_node_count = _capacity.load(std::memory_order_relaxed);
         }
     }
 

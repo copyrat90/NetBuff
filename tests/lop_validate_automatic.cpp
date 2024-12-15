@@ -182,15 +182,16 @@ int main()
             phase_done_per_threads[i].wait(phase - 1);
 
         // check if somethings gone wrong
+        std::atomic_thread_fence(std::memory_order_seq_cst);
         if (phase % 2)
         {
             if (capacity_check)
-                TEST_ASSERT(destroy_pool->capacity() == init_capacity);
+                TEST_ASSERT(destroy_pool->monitor_capacity() == init_capacity);
         }
         else
         {
             if (capacity_check)
-                TEST_ASSERT(no_destroy_pool->capacity() == init_capacity);
+                TEST_ASSERT(no_destroy_pool->monitor_capacity() == init_capacity);
         }
 
         // clean up this phase
