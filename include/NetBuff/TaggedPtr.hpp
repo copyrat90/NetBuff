@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bit>
+#include <cstddef>
 #include <cstdint>
 #include <format>
 #include <stdexcept>
@@ -12,14 +13,20 @@
 namespace nb
 {
 
+template <typename T, std::size_t Alignment>
+class TaggedPtrAligned;
+
 template <typename T>
-class TaggedPtr
+using TaggedPtr = TaggedPtrAligned<T, alignof(T)>;
+
+template <typename T, std::size_t Alignment>
+class TaggedPtrAligned
 {
 private:
     std::uintptr_t _tagged_addr;
 
 public:
-    static_assert(std::has_single_bit(alignof(T)), "Not power of two alignment for `T`");
+    static_assert(std::has_single_bit(Alignment), "Not power of two alignment for `T`");
     static_assert(sizeof(_tagged_addr) == 8, "LockfreeObjectPool only supports 64-bit architecture");
     static_assert(8 <= NB_VA_BITS && NB_VA_BITS <= 64, "Invalid `NB_VA_BITS`");
 
@@ -27,8 +34,8 @@ public:
     static constexpr std::size_t UPPER_TAG_BITS = 64 - NB_VA_BITS;
     static constexpr std::uintptr_t UPPER_TAG_MASK = ((std::uintptr_t(1) << UPPER_TAG_BITS) - 1) << NB_VA_BITS;
 
-    static constexpr std::size_t LOWER_TAG_BITS = std::countr_zero(alignof(T));
-    static constexpr std::uintptr_t LOWER_TAG_MASK = alignof(T) - 1;
+    static constexpr std::size_t LOWER_TAG_BITS = std::countr_zero(Alignment);
+    static constexpr std::uintptr_t LOWER_TAG_MASK = Alignment - 1;
 
     static_assert(!(UPPER_TAG_MASK & LOWER_TAG_MASK), "Tag masks overlap; Possibly invalid `NB_VA_BITS`");
     static_assert(NB_VA_BITS >= LOWER_TAG_BITS,
@@ -37,7 +44,7 @@ public:
     static constexpr std::uintptr_t TAG_MASK = UPPER_TAG_MASK | LOWER_TAG_MASK;
 
 public:
-    TaggedPtr(T* ptr, std::uintptr_t tag) : _tagged_addr(reinterpret_cast<std::uintptr_t>(ptr))
+    TaggedPtrAligned(T* ptr, std::uintptr_t tag) : _tagged_addr(reinterpret_cast<std::uintptr_t>(ptr))
     {
         if (_tagged_addr & TAG_MASK)
             throw std::logic_error(std::format("ptr address `0x{:016x}` holds tag bit", _tagged_addr));
@@ -45,13 +52,13 @@ public:
         set_tag(tag);
     }
 
-    TaggedPtr(T* ptr) : _tagged_addr(reinterpret_cast<std::uintptr_t>(ptr))
+    TaggedPtrAligned(T* ptr) : _tagged_addr(reinterpret_cast<std::uintptr_t>(ptr))
     {
         if (_tagged_addr & TAG_MASK)
             throw std::logic_error(std::format("ptr address `0x{:016x}` holds tag bit", _tagged_addr));
     }
 
-    TaggedPtr() : _tagged_addr(0)
+    TaggedPtrAligned() : _tagged_addr(0)
     {
     }
 
