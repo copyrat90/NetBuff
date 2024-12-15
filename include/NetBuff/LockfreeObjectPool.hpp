@@ -177,7 +177,7 @@ public:
             while (!cur)
             {
                 add_new_block();
-                cur = _node_head.load();
+                cur = _node_head.load(std::memory_order_relaxed);
             }
 
             // if got the candidate `cur` node, prepare `next` node
@@ -329,7 +329,7 @@ private:
 #endif
             if constexpr (!CallDestructorOnDestroy)
                 last_node.constructed = false;
-            TaggedPtr<Node> old_head = _node_head.load();
+            TaggedPtr<Node> old_head = _node_head.load(std::memory_order_relaxed);
             TaggedPtr<Node> new_head(nodes);
             for (;;)
             {
@@ -338,7 +338,7 @@ private:
                 new_head.set_tag(old_head.get_tag());
 
                 // try exchanging `_node_head` to `new_head`, and break if succeeds
-                if (_node_head.compare_exchange_weak(old_head, new_head))
+                if (_node_head.compare_exchange_weak(old_head, new_head, std::memory_order_release, std::memory_order_relaxed))
                     break;
             }
 
