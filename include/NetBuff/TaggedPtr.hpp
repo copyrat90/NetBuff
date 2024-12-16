@@ -63,6 +63,9 @@ public:
     }
 
 public:
+    bool operator==(const TaggedPtrAligned& other) const noexcept = default;
+
+public:
     auto get_ptr() const noexcept -> T*
     {
         return reinterpret_cast<T*>(_tagged_addr & ~TAG_MASK);
