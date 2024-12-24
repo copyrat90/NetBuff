@@ -32,6 +32,7 @@ if(NB_TEST_ENABLED)
     add_test(NAME test_sb_validate_automatic COMMAND sb_validate_automatic)
     add_test(NAME test_op_validate_automatic COMMAND op_validate_automatic)
     add_test(NAME test_il_validate_automatic COMMAND il_validate_automatic)
+    add_test(NAME test_lq_validate_automatic COMMAND lq_validate_automatic)
 
     add_test(NAME test_lop_validate_automatic_asan COMMAND lop_validate_automatic_asan)
     add_test(NAME test_lop_validate_automatic_tsan COMMAND lop_validate_automatic_tsan)
